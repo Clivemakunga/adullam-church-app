@@ -1,39 +1,49 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+import { Redirect, SplashScreen, Stack } from "expo-router";
+import { AuthProvider, useAuth } from '../providers/AuthProvider';
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { View } from "react-native";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    // Check if the user is logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-  if (!loaded) {
+    // Listen for authentication changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (!loading) {
+      // Hide the splash screen once the session check is complete
+      await SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
+  if (loading) {
+    // Return null or a loading indicator while waiting
     return null;
   }
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      {session ? <Redirect href="/(tabs)" /> : <Redirect href="/" />}
+    <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    </Stack>
+    </View>
+    </AuthProvider>
   );
 }
