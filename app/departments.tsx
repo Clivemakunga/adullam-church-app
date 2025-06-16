@@ -3,12 +3,13 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image }
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
 
 export default function DepartmentsScreen() {
+  const router = useRouter();
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -63,15 +64,20 @@ export default function DepartmentsScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Animated.View entering={FadeIn.duration(500)}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Church Departments</Text>
-            <Text style={styles.subtitle}>Manage ministry teams and members</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.title}>Church Departments</Text>
+              <Text style={styles.subtitle}>Manage ministry teams and members</Text>
+            </View>
           </View>
-          <Link href="/admin/departments/create" asChild>
+          {/* <Link href="/admin/departments/create" asChild>
             <TouchableOpacity style={styles.addButton}>
               <Ionicons name="add" size={24} color="white" />
             </TouchableOpacity>
-          </Link>
+          </Link> */}
         </View>
       </Animated.View>
 
@@ -165,6 +171,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    marginTop: 40
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    marginRight: 8,
   },
   title: {
     fontSize: 24,

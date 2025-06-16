@@ -10,35 +10,70 @@ import {
   ScrollView,
   Dimensions,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ActivityIndicator
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown, FadeInUp, BounceIn } from "react-native-reanimated";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from '../../providers/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 const isSmallScreen = height < 700;
 
 export default function RegisterScreen() {
-  const { signup, loading } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
     setError('');
-    try {
-      if (!firstName || !lastName) throw new Error('Please enter your full name');
-      if (!email || !password) throw new Error('Please fill in all fields');
+    
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
 
-      await signup(email, password, firstName, lastName);
-      
+    if (!email.trim() || !password.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
       Alert.alert(
         'Confirm Your Email',
         'We\'ve sent a confirmation link to your email',
@@ -47,6 +82,8 @@ export default function RegisterScreen() {
     } catch (error: any) {
       setError(error.message);
       Alert.alert("Registration Error", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -164,7 +201,7 @@ export default function RegisterScreen() {
                     />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.passwordHint}>Minimum 8 characters with numbers</Text>
+                <Text style={styles.passwordHint}>Minimum 6 characters</Text>
               </Animated.View>
 
               {error && (
@@ -185,9 +222,11 @@ export default function RegisterScreen() {
                   onPress={handleRegister}
                   disabled={loading}
                 >
-                  <Text style={styles.registerButtonText}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
-                  </Text>
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={styles.registerButtonText}>Create Account</Text>
+                  )}
                 </TouchableOpacity>
               </Animated.View>
             </Animated.View>

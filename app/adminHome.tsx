@@ -32,18 +32,18 @@ export default function AdminHomeScreen() {
       screen: "/add-visitors",
       description: "Do follow ups"
     },
-    {
-      id: 2,
-      title: "Events",
-      icon: "calendar",
-      count: 2,
-      screen: "/admin/events",
-      description: "Create & manage events"
-    },
+    // {
+    //   id: 2,
+    //   title: "Events",
+    //   icon: "calendar",
+    //   count: 2,
+    //   screen: "/admin/events",
+    //   description: "Create & manage events"
+    // },
     {
       id: 3,
       title: "Prayers",
-      icon: "pray",
+      icon: "hands-pray",
       count: 5,
       screen: "/prayer-requests",
       description: "Pending requests"
@@ -79,13 +79,13 @@ export default function AdminHomeScreen() {
       screen: "/professions",
       description: "Congregants' vocations"
     },
-    {
-      id: 8,
-      title: "Church Roles",
-      icon: "account-group",
-      screen: "/admin/roles",
-      description: "Manage positions"
-    },
+    // {
+    //   id: 8,
+    //   title: "Church Roles",
+    //   icon: "account-group",
+    //   screen: "/admin/roles",
+    //   description: "Manage positions"
+    // },
     {
       id: 9,
       title: "Church Departments",
@@ -114,6 +114,13 @@ export default function AdminHomeScreen() {
       screen: "/visitors-list",
       description: "See all the details for the visitors"
     },
+    {
+      id: 13,
+      title: "Devotions",
+      icon: "cog",
+      screen: "/admin-devotions",
+      description: "See all the details for the visitors"
+    },
   ];
 
   return (
@@ -122,14 +129,22 @@ export default function AdminHomeScreen() {
       style={styles.gradient}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Admin Header */}
+        {/* Admin Header with Back Button */}
         <Animated.View 
           style={styles.header}
           entering={FadeIn.duration(800)}
         >
-          <View>
-            <Text style={styles.adminTitle}>Admin Dashboard</Text>
-            <Text style={styles.adminSubtitle}>Manage Church Resources</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity 
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.adminTitle}>Admin Dashboard</Text>
+              <Text style={styles.adminSubtitle}>Manage Church Resources</Text>
+            </View>
           </View>
           <MaterialCommunityIcons 
             name="shield-account" 
@@ -202,49 +217,6 @@ export default function AdminHomeScreen() {
             ))}
           </View>
         </Animated.View>
-
-        {/* Pending Approvals */}
-        <Animated.View 
-          style={styles.section}
-          entering={FadeInDown.duration(800).delay(400)}
-        >
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="shield-check" size={22} color={ADMIN_COLOR} />
-            <Text style={styles.sectionTitle}>Pending Approvals</Text>
-          </View>
-          <View style={styles.approvalsContainer}>
-            <TouchableOpacity 
-              style={styles.approvalItem}
-              onPress={() => router.push('/admin/testimonies')}
-            >
-              <View style={styles.approvalLeft}>
-                <FontAwesome name="user-circle" size={20} color={PRIMARY_COLOR} />
-                <Text style={styles.approvalText}>5 new testimonies</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#6c757d" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.approvalItem}
-              onPress={() => router.push('/admin/professions')}
-            >
-              <View style={styles.approvalLeft}>
-                <MaterialCommunityIcons name="briefcase-edit" size={20} color={PRIMARY_COLOR} />
-                <Text style={styles.approvalText}>12 profession updates</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#6c757d" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.approvalItem}
-              onPress={() => router.push('/admin/roles')}
-            >
-              <View style={styles.approvalLeft}>
-                <MaterialCommunityIcons name="account-switch" size={20} color={PRIMARY_COLOR} />
-                <Text style={styles.approvalText}>3 role change requests</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#6c757d" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
       </ScrollView>
     </LinearGradient>
   );
@@ -264,10 +236,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backButton: {
+    marginRight: 10,
+  },
   adminTitle: {
     fontSize: 24,
     fontFamily: 'Montserrat_600SemiBold',
     color: ADMIN_COLOR,
+    marginTop: 30
   },
   adminSubtitle: {
     fontSize: 14,

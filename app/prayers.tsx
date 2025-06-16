@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, RefreshControl, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
+import { supabase } from '@/lib/supabase';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
@@ -14,86 +15,192 @@ export default function PrayerWallScreen() {
     Montserrat_400Regular,
   });
 
-  const [prayers, setPrayers] = useState([
-    {
-      id: '1',
-      name: "Sarah Johnson",
-      date: "2023-10-15",
-      request: "Please pray for my mother's healing from cancer. She's undergoing chemotherapy next week.",
-      isPrivate: false,
-      isApproved: true,
-      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      category: "healing",
-      prayedCount: 12
-    },
-    {
-      id: '2',
-      name: "Michael Brown",
-      date: "2023-10-14",
-      request: "Pray for my job interview on Friday. I really need this position to support my family.",
-      isPrivate: false,
-      isApproved: true,
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-      category: "employment",
-      prayedCount: 8
-    },
-    {
-      id: '3',
-      name: "Anonymous",
-      date: "2023-10-12",
-      request: "Pray for my marriage restoration. We're going through difficult times.",
-      isPrivate: true,
-      isApproved: true,
-      avatar: null,
-      category: "marriage",
-      prayedCount: 5
-    },
-    {
-      id: '4',
-      name: "Grace Williams",
-      date: "2023-10-10",
-      request: "Pray for my son who's struggling with addiction.",
-      isPrivate: false,
-      isApproved: false,
-      avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-      category: "family",
-      prayedCount: 0
-    },
-  ]);
-
+  const [prayers, setPrayers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true); // New loading state
 
-  // Filter to show only approved, non-private prayers
-  const visiblePrayers = prayers.filter(prayer => 
-    prayer.isApproved && !prayer.isPrivate
-  );
+  // Fetch user ID on component mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+    };
+    fetchUser();
+  }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    // Simulate API refresh
-    setTimeout(() => {
-      setRefreshing(false);
-      // In a real app, you would fetch new data here
-    }, 1500);
-  };
+  // Fetch prayers from Supabase
+  const fetchPrayers = async () => {
+    try {
+      setLoading(true); // Show loader when fetching starts
+      
+      // First query to get all public prayers
+      const { data: prayerRequests, error: prayerError } = await supabase
+        .from('prayer_requests')
+        .select(`
+          id,
+          content,
+          is_private,
+          created_at,
+          prayer_count,
+          user_id
+        `)
+        .eq('approved', true)
+        .eq('is_private', false)
+        .order('created_at', { ascending: false });
 
-  const getCategoryIcon = (category) => {
-    switch(category) {
-      case 'healing': return 'heart-pulse';
-      case 'employment': return 'briefcase';
-      case 'marriage': return 'heart';
-      case 'family': return 'home';
-      case 'spiritual': return 'pray';
-      default: return 'pray';
+      if (prayerError) throw prayerError;
+
+      // Get all user IDs from the prayers
+      const userIds = prayerRequests.map(prayer => prayer.user_id);
+
+      // Fetch user data for all prayer authors
+      const { data: users, error: userError } = await supabase
+        .from('users')
+        .select(`
+          id,
+          first_name,
+          image
+        `)
+        .in('id', userIds);
+
+      if (userError) throw userError;
+
+      // Create a map of user data for easy lookup
+      const userMap = users.reduce((map, user) => {
+        map[user.id] = user;
+        return map;
+      }, {});
+
+      // Check which prayers the current user has prayed for
+      let prayedRequests = [];
+      if (userId) {
+        const { data: prayedData, error: prayedError } = await supabase
+          .from('prayers')
+          .select('request_id')
+          .eq('user_id', userId);
+
+        if (prayedError) throw prayedError;
+        prayedRequests = prayedData.map(p => p.request_id);
+      }
+
+      // Combine all data
+      const formattedPrayers = prayerRequests.map(prayer => {
+        const user = userMap[prayer.user_id];
+        return {
+          id: prayer.id,
+          name: user?.first_name || "Anonymous",
+          date: prayer.created_at,
+          request: prayer.content,
+          isPrivate: prayer.is_private,
+          isApproved: true,
+          avatar: user?.image,
+          prayedCount: prayer.prayer_count || 0, // Ensure we have a number
+          hasPrayed: prayedRequests.includes(prayer.id)
+        };
+      });
+
+      setPrayers(formattedPrayers);
+    } catch (error) {
+      console.error('Error fetching prayers:', error);
+      Alert.alert('Error', 'Could not load prayer requests');
+    } finally {
+      setLoading(false); // Hide loader when done
     }
   };
 
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+  // Initial data fetch
+  useEffect(() => {
+    fetchPrayers();
+  }, [userId]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchPrayers();
+    setRefreshing(false);
   };
 
-  if (!fontsLoaded) return null;
+const handlePray = async (prayerId) => {
+  if (!userId) {
+    Alert.alert('Please sign in', 'You need to be signed in to pray for requests');
+    return;
+  }
+
+  try {
+    // Check if already prayed
+    const { data: existingPrayer, error: checkError } = await supabase
+      .from('prayers')
+      .select('*')
+      .eq('request_id', prayerId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingPrayer) {
+      Alert.alert("You've already prayed for this request");
+      return;
+    }
+
+    // Increment prayer count using the PostgreSQL function
+    const { error: incrementError } = await supabase
+      .rpc('increment_prayer_count', { prayer_id: prayerId });
+
+    if (incrementError) throw incrementError;
+
+    // Record the prayer
+    const { error: insertError } = await supabase
+      .from('prayers')
+      .insert({
+        request_id: prayerId,
+        user_id: userId
+      });
+
+    if (insertError) throw insertError;
+
+    // Update local state
+    setPrayers(prayers.map(prayer => 
+      prayer.id === prayerId 
+        ? { ...prayer, prayedCount: (prayer.prayedCount || 0) + 1, hasPrayed: true } 
+        : prayer
+    ));
+
+  } catch (error) {
+    console.error('Error recording prayer:', error);
+    Alert.alert('Error', 'Failed to record your prayer');
+  }
+};
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+  };
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <Text style={styles.loadingText}>Loading prayers...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -110,7 +217,7 @@ export default function PrayerWallScreen() {
         </Link>
       </Animated.View>
 
-      {visiblePrayers.length === 0 ? (
+      {prayers.length === 0 ? (
         <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyState}>
           <MaterialCommunityIcons name="pray" size={48} color="#adb5bd" />
           <Text style={styles.emptyText}>No prayer requests to display</Text>
@@ -123,7 +230,7 @@ export default function PrayerWallScreen() {
         </Animated.View>
       ) : (
         <FlatList
-          data={visiblePrayers}
+          data={prayers}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -151,22 +258,32 @@ export default function PrayerWallScreen() {
                   <Text style={styles.prayerName}>{item.name || "Anonymous"}</Text>
                   <Text style={styles.prayerDate}>{formatDate(item.date)}</Text>
                 </View>
-                <MaterialCommunityIcons 
-                  name={getCategoryIcon(item.category)} 
-                  size={20} 
-                  color={PRIMARY_COLOR} 
-                />
               </View>
               
               <Text style={styles.prayerText}>{item.request}</Text>
               
               <View style={styles.prayerFooter}>
                 <TouchableOpacity style={styles.prayedButton}>
-                  <MaterialCommunityIcons name="hands-pray" size={18} color={PRIMARY_COLOR} />
-                  <Text style={styles.prayedCountText}>Prayed {item.prayedCount} times</Text>
+                  <MaterialCommunityIcons 
+                    name="hands-pray" 
+                    size={18} 
+                    color={item.hasPrayed ? '#4CAF50' : PRIMARY_COLOR} 
+                  />
+                  <Text style={styles.prayedCountText}>
+                    {item.prayedCount} {item.prayedCount === 1 ? 'prayed' : 'prayed'}
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.prayNowButton}>
-                  <Text style={styles.prayNowText}>I Prayed For This</Text>
+                <TouchableOpacity 
+                  style={[
+                    styles.prayNowButton,
+                    item.hasPrayed && styles.prayedAlreadyButton
+                  ]}
+                  onPress={() => handlePray(item.id)}
+                  disabled={item.hasPrayed}
+                >
+                  <Text style={styles.prayNowText}>
+                    {item.hasPrayed ? '✓ Prayed' : 'I Prayed For This'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -332,4 +449,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'white',
   },
+  prayedAlreadyButton: {
+    backgroundColor: '#4CAF50',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontFamily: 'Montserrat_400Regular',
+    color: ADMIN_COLOR,
+  }
 });

@@ -12,6 +12,8 @@ import {
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import { supabase } from '@/lib/supabase';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
@@ -24,6 +26,7 @@ export default function VisitorsListScreen() {
 
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetchVisitors();
@@ -80,16 +83,52 @@ export default function VisitorsListScreen() {
   );
 
   return (
-    <FlatList
-      data={visitors}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.container}
-      renderItem={renderItem}
-    />
+    <View style={styles.screenContainer}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Visitors List</Text>
+        <View style={styles.backButtonPlaceholder} />
+      </View>
+      
+      <FlatList
+        data={visitors}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.container}
+        renderItem={renderItem}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+    marginTop: 30
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: ADMIN_COLOR,
+  },
+  backButton: {
+    padding: 5,
+  },
+  backButtonPlaceholder: {
+    width: 24,
+  },
   container: {
     padding: 20,
     paddingBottom: 40,

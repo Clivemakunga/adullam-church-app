@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native';
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { supabase } from '@/lib/supabase'; // <-- adjust the path based on your setup
+import { supabase } from '@/lib/supabase';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
 
-export default function CreateDevotionScreen() {
+export default function CreateDevotionScreen({ initialData, onSubmit, mode = 'create' }) {
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -26,6 +26,13 @@ export default function CreateDevotionScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Populate data if in edit mode
+  useEffect(() => {
+    if (initialData) {
+      setDevotionData(initialData);
+    }
+  }, [initialData]);
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -44,32 +51,38 @@ export default function CreateDevotionScreen() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from('devotions').insert([
-      {
-        title,
-        bible_verse: bibleVerse,
-        content,
-        date,
-        category,
-        is_featured: isFeatured,
-      },
-    ]);
+    if (onSubmit) {
+      await onSubmit(devotionData);
+    } else {
+      const { error } = await supabase.from('devotions').insert([
+        {
+          title,
+          bible_verse: bibleVerse,
+          content,
+          date,
+          category,
+          is_featured: isFeatured,
+        },
+      ]);
+
+      if (error) {
+        Alert.alert('Error', error.message);
+        setIsSubmitting(false);
+        return;
+      } else {
+        Alert.alert('Success', 'Devotion created successfully!');
+        setDevotionData({
+          title: '',
+          bibleVerse: '',
+          content: '',
+          date: new Date(),
+          category: 'daily',
+          isFeatured: false,
+        });
+      }
+    }
 
     setIsSubmitting(false);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
-      Alert.alert('Success', 'Devotion created successfully!');
-      setDevotionData({
-        title: '',
-        bibleVerse: '',
-        content: '',
-        date: new Date(),
-        category: 'daily',
-        isFeatured: false,
-      });
-    }
   };
 
   if (!fontsLoaded) return null;
@@ -77,10 +90,13 @@ export default function CreateDevotionScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Animated.View entering={FadeIn.duration(500)}>
-        <Text style={styles.title}>Create New Devotion</Text>
-        <Text style={styles.subtitle}>Inspire your congregation daily</Text>
+        <Text style={styles.title}>{mode === 'edit' ? 'Edit Devotion' : 'Create New Devotion'}</Text>
+        <Text style={styles.subtitle}>
+          {mode === 'edit' ? 'Update the devotion content' : 'Inspire your congregation daily'}
+        </Text>
       </Animated.View>
 
+      {/* Title */}
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.formGroup}>
         <Text style={styles.label}>Title *</Text>
         <TextInput
@@ -91,6 +107,7 @@ export default function CreateDevotionScreen() {
         />
       </Animated.View>
 
+      {/* Bible Verse */}
       <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.formGroup}>
         <Text style={styles.label}>Bible Verse *</Text>
         <TextInput
@@ -101,6 +118,7 @@ export default function CreateDevotionScreen() {
         />
       </Animated.View>
 
+      {/* Content */}
       <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.formGroup}>
         <Text style={styles.label}>Content *</Text>
         <TextInput
@@ -113,13 +131,12 @@ export default function CreateDevotionScreen() {
         />
       </Animated.View>
 
+      {/* Date Picker */}
       <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.formGroup}>
         <Text style={styles.label}>Date *</Text>
         <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
           <Ionicons name="calendar" size={18} color={ADMIN_COLOR} />
-          <Text style={styles.dateText}>
-            {devotionData.date.toLocaleDateString()}
-          </Text>
+          <Text style={styles.dateText}>{devotionData.date.toLocaleDateString()}</Text>
         </TouchableOpacity>
         {showDatePicker && (
           <DateTimePicker
@@ -131,6 +148,7 @@ export default function CreateDevotionScreen() {
         )}
       </Animated.View>
 
+      {/* Category */}
       <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.formGroup}>
         <Text style={styles.label}>Category *</Text>
         <View style={styles.radioContainer}>
@@ -151,6 +169,7 @@ export default function CreateDevotionScreen() {
         </View>
       </Animated.View>
 
+      {/* Feature Toggle */}
       <Animated.View entering={FadeInDown.duration(500).delay(600)} style={styles.formGroup}>
         <TouchableOpacity
           style={styles.featureToggle}
@@ -166,6 +185,7 @@ export default function CreateDevotionScreen() {
         </TouchableOpacity>
       </Animated.View>
 
+      {/* Submit Button */}
       <Animated.View entering={FadeInDown.duration(500).delay(700)}>
         <TouchableOpacity
           style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -173,11 +193,15 @@ export default function CreateDevotionScreen() {
           disabled={isSubmitting}
         >
           {isSubmitting ? (
-            <Text style={styles.submitButtonText}>Creating Devotion...</Text>
+            <Text style={styles.submitButtonText}>
+              {mode === 'edit' ? 'Updating Devotion...' : 'Creating Devotion...'}
+            </Text>
           ) : (
             <>
-              <MaterialCommunityIcons name="book-plus" size={20} color="white" />
-              <Text style={styles.submitButtonText}>Publish Devotion</Text>
+              <MaterialCommunityIcons name={mode === 'edit' ? "pencil" : "book-plus"} size={20} color="white" />
+              <Text style={styles.submitButtonText}>
+                {mode === 'edit' ? 'Update Devotion' : 'Publish Devotion'}
+              </Text>
             </>
           )}
         </TouchableOpacity>

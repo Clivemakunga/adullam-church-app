@@ -7,11 +7,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { supabase } from '@/lib/supabase';
 import * as FileSystem from 'expo-file-system';
+import { Picker } from '@react-native-picker/picker';
+import { useRouter } from 'expo-router';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
 
 export default function CreateSermonScreen() {
+  const router = useRouter();
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -25,6 +28,7 @@ export default function CreateSermonScreen() {
     audioFile: null,
     videoFile: null,
     notes: '',
+    category: 'Sunday Service', // Default category
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -109,6 +113,7 @@ export default function CreateSermonScreen() {
             audio_url: audioUrl,
             video_url: videoUrl,
             notes: sermonData.notes,
+            category: sermonData.category,
           }
         ]);
 
@@ -125,6 +130,7 @@ export default function CreateSermonScreen() {
         audioFile: null,
         videoFile: null,
         notes: '',
+        category: 'Sunday Service',
       });
     } catch (err) {
       Alert.alert('Upload Failed', err.message || 'An error occurred');
@@ -137,10 +143,15 @@ export default function CreateSermonScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Animated.View entering={FadeIn.duration(500)}>
-        <Text style={styles.title}>Create New Sermon</Text>
-        <Text style={styles.subtitle}>Share God's word with your congregation</Text>
-      </Animated.View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>Create New Sermon</Text>
+          <Text style={styles.subtitle}>Share God's word with your congregation</Text>
+        </View>
+      </View>
 
       {/* Inputs */}
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.formGroup}>
@@ -171,6 +182,21 @@ export default function CreateSermonScreen() {
           value={sermonData.bibleText}
           onChangeText={(text) => setSermonData({...sermonData, bibleText: text})}
         />
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(500).delay(350)} style={styles.formGroup}>
+        <Text style={styles.label}>Category *</Text>
+        <View style={[styles.input, styles.pickerContainer]}>
+          <Picker
+            selectedValue={sermonData.category}
+            onValueChange={(itemValue) => setSermonData({...sermonData, category: itemValue})}
+            style={styles.picker}
+            dropdownIconColor={ADMIN_COLOR}
+          >
+            <Picker.Item label="Sunday Service" value="Sunday Service" />
+            <Picker.Item label="Thursday Service" value="Thursday Service" />
+          </Picker>
+        </View>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.formGroup}>
@@ -246,6 +272,18 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   title: {
     fontSize: 24,
     fontFamily: 'Montserrat_600SemiBold',
@@ -256,7 +294,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_400Regular',
     color: '#6c757d',
-    marginBottom: 25,
+    marginBottom: 0,
   },
   formGroup: {
     marginBottom: 20,
@@ -278,6 +316,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  pickerContainer: {
+    padding: 0,
+  },
+  picker: {
+    width: '100%',
+    color: ADMIN_COLOR,
   },
   textArea: {
     height: 150,

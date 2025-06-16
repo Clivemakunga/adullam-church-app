@@ -1,54 +1,43 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions } from "react-native";
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, RefreshControl } from "react-native";
 import Animated, { FadeInRight, FadeInUp } from 'react-native-reanimated';
 import { Link } from 'expo-router';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 const PRIMARY_COLOR = '#c31c6b';
-
-const sermons = [
-  {
-    id: '1',
-    title: "The Transformative Power of Faith",
-    date: "March 15, 2023",
-    category: "Spiritual Growth",
-    excerpt: "Exploring how faith can transform our daily lives and relationships...",
-    image: "https://i.imgur.com/abc123.jpg",
-    readTime: "5 min read"
-  },
-  {
-    id: '2',
-    title: "Finding Purpose in Modern Times",
-    date: "March 8, 2023",
-    category: "Life Purpose",
-    excerpt: "Understanding God's plan for your life in today's fast-paced world...",
-    image: "https://i.imgur.com/def456.jpg",
-    readTime: "4 min read"
-  },
-  {
-    id: '3',
-    title: "Overcoming Life's Challenges",
-    date: "March 1, 2023",
-    category: "Perseverance",
-    excerpt: "Biblical strategies for overcoming adversity...",
-    image: "https://i.imgur.com/ghi789.jpg",
-    readTime: "6 min read"
-  },
-  {
-    id: '4',
-    title: "The Gift of Grace",
-    date: "February 22, 2023",
-    category: "Salvation",
-    excerpt: "Understanding unmerited favor in our lives...",
-    image: "https://i.imgur.com/jkl012.jpg",
-    readTime: "4 min read"
-  },
-];
+const PLACEHOLDER_IMAGE = 'https://picsum.photos/800/600?grayscale';
+const MAX_EXCERPT_WORDS = 40;
 
 export default function SermonsScreen() {
   const [numColumns, setNumColumns] = useState(1);
   const [isGridView, setIsGridView] = useState(false);
+  const [sermons, setSermons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchSermons = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('sermons')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setSermons(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSermons();
+  }, []);
 
   const toggleView = () => {
     const newColumns = isGridView ? 1 : 2;
@@ -56,8 +45,22 @@ export default function SermonsScreen() {
     setIsGridView(!isGridView);
   };
 
+  // Function to truncate text to 40 words
+  const truncateText = (text) => {
+    if (!text) return 'No excerpt available...';
+    
+    const words = text.split(' ');
+    if (words.length > MAX_EXCERPT_WORDS) {
+      return words.slice(0, MAX_EXCERPT_WORDS).join(' ') + '...';
+    }
+    return text;
+  };
+
   const renderSermon = ({ item, index }) => (
-    <Link href={`/(sermons)/${item.id}`} asChild>
+    <Link href={{
+      pathname: `/sermon-details`,
+      params: { sermon: JSON.stringify(item) }
+    }} asChild>
       <TouchableOpacity>
         <Animated.View 
           entering={FadeInRight.delay(index * 100)}
@@ -67,26 +70,33 @@ export default function SermonsScreen() {
           ]}
         >
           <Image 
-            source={{ uri: item.image }} 
-            style={isGridView ? styles.gridImage : styles.listImage} 
+            source={{ uri: item.image || PLACEHOLDER_IMAGE }} 
+            style={isGridView ? styles.gridImage : styles.listImage}
+            resizeMode="cover"
           />
           
           <View style={styles.contentContainer}>
-            <Text style={styles.category}>{item.category}</Text>
+            <Text style={styles.category}>{item.category || 'Sermon'}</Text>
             <Text style={styles.title}>{item.title}</Text>
             
             <View style={styles.metaContainer}>
-              <Text style={styles.date}>{item.date}</Text>
+              <Text style={styles.date}>
+                {item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : 'No date'}
+              </Text>
               {!isGridView && (
                 <>
                   <View style={styles.dot} />
-                  <Text style={styles.readTime}>{item.readTime}</Text>
+                  <Text style={styles.readTime}>{item.read_time || '5 min read'}</Text>
                 </>
               )}
             </View>
 
             {!isGridView && (
-              <Text style={styles.excerpt}>{item.excerpt}</Text>
+              <Text style={styles.excerpt}>{truncateText(item.notes)}</Text>
             )}
 
             <View style={styles.footer}>
@@ -97,6 +107,40 @@ export default function SermonsScreen() {
       </TouchableOpacity>
     </Link>
   );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <Text style={styles.errorText}>Error loading sermons: {error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={fetchSermons}
+        >
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (sermons.length === 0 && !loading) {
+    return (
+      <View style={[styles.container, styles.emptyContainer]}>
+        <Image 
+          source={{ uri: PLACEHOLDER_IMAGE }} 
+          style={styles.emptyImage}
+        />
+        <Text style={styles.emptyText}>No sermons available yet</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -119,10 +163,17 @@ export default function SermonsScreen() {
         key={`flatlist-${numColumns}`}
         data={sermons}
         renderItem={renderSermon}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.id.toString()}
         numColumns={numColumns}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={fetchSermons}
+            tintColor={PRIMARY_COLOR}
+          />
+        }
       />
     </View>
   );
@@ -132,6 +183,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  retryText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyImage: {
+    width: 200,
+    height: 150,
+    marginBottom: 20,
+    borderRadius: 10,
+    opacity: 0.7,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',

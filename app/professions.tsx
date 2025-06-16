@@ -3,11 +3,13 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, TextInp
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from 'expo-router';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
 
 export default function ProfessionsScreen() {
+  const router = useRouter();
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -49,10 +51,15 @@ export default function ProfessionsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Animated.View entering={FadeIn.duration(500)}>
-        <Text style={styles.title}>Congregant Professions</Text>
-        <Text style={styles.subtitle}>Manage and categorize member professions</Text>
-      </Animated.View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.title}>Congregant Professions</Text>
+          <Text style={styles.subtitle}>Manage and categorize member professions</Text>
+        </View>
+      </View>
 
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#6c757d" style={styles.searchIcon} />
@@ -116,6 +123,15 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 15,
+  },
   title: {
     fontSize: 24,
     fontFamily: 'Montserrat_600SemiBold',
@@ -126,7 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_400Regular',
     color: '#6c757d',
-    marginBottom: 25,
+    marginBottom: 5,
   },
   searchContainer: {
     flexDirection: 'row',

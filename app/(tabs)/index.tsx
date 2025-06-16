@@ -40,7 +40,7 @@ export default function HomeScreen() {
       id: 1, 
       title: "Prayer", 
       time: "3:40 AM", 
-      subtext: "Request", 
+      subtext: "Requests", 
       icon: "hands-pray", 
       screen: "/prayers" 
     },
@@ -124,7 +124,7 @@ export default function HomeScreen() {
                 <Link href={action.screen} asChild>
                   <TouchableOpacity style={styles.timeCard}>
                     <Text style={styles.cardTitle}>{action.title}</Text>
-                    <Text style={styles.cardTime}>{action.time}</Text>
+                    {/* <Text style={styles.cardTime}>{action.time}</Text> */}
                     <View style={styles.cardFooter}>
                       <MaterialCommunityIcons 
                         name={action.icon} 
@@ -147,9 +147,8 @@ export default function HomeScreen() {
         >
           <View style={styles.sectionHeader}>
             <Ionicons name="tv" size={22} color={PRIMARY_COLOR} />
-            <Text style={styles.sectionTitle}>Worship With Us</Text>
+            <Text style={styles.sectionTitle}>Weekly Sermon.</Text>
           </View>
-          <Link href="/(media)/live" asChild>
             <TouchableOpacity style={styles.liveCard}>
               <Image 
                 source={require('../../assets/images/live.jpg')}
@@ -160,11 +159,11 @@ export default function HomeScreen() {
                 style={styles.liveOverlay}
                 entering={FadeInUp.duration(500).delay(800)}
               >
-                <Text style={styles.liveTitle}>Sunday Service Live Stream</Text>
-                <Text style={styles.liveSubtitle}>Join us now!</Text>
+                <Text style={styles.liveTitle}>Sunday Sermon title here</Text>
+                <Text style={styles.liveSubtitle}>date here ...</Text>
               </Animated.View>
             </TouchableOpacity>
-          </Link>
+
         </Animated.View>
 
         {/* Upcoming Events */}
@@ -210,38 +209,30 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Ministries</Text>
           </View>
           <View style={styles.ministryGrid}>
-            <Link href="/ministries/kids" asChild>
               <TouchableOpacity style={styles.ministryCard}>
                 <Animated.View entering={ZoomIn.duration(600).delay(1100)}>
                   <FontAwesome5 name="child" size={22} color={PRIMARY_COLOR} />
                 </Animated.View>
                 <Text style={styles.ministryText}>Kids</Text>
               </TouchableOpacity>
-            </Link>
-            <Link href="/ministries/youth" asChild>
               <TouchableOpacity style={styles.ministryCard}>
                 <Animated.View entering={ZoomIn.duration(600).delay(1200)}>
                   <Ionicons name="people" size={22} color={PRIMARY_COLOR} />
                 </Animated.View>
                 <Text style={styles.ministryText}>Youth</Text>
               </TouchableOpacity>
-            </Link>
-            <Link href="/ministries/counseling" asChild>
               <TouchableOpacity style={styles.ministryCard}>
                 <Animated.View entering={ZoomIn.duration(600).delay(1300)}>
                   <MaterialCommunityIcons name="heart-plus" size={22} color={PRIMARY_COLOR} />
                 </Animated.View>
                 <Text style={styles.ministryText}>Counseling</Text>
               </TouchableOpacity>
-            </Link>
-            <Link href="/ministries/volunteer" asChild>
               <TouchableOpacity style={styles.ministryCard}>
                 <Animated.View entering={ZoomIn.duration(600).delay(1400)}>
                   <MaterialCommunityIcons name="handshake" size={22} color={PRIMARY_COLOR} />
                 </Animated.View>
                 <Text style={styles.ministryText}>Volunteer</Text>
               </TouchableOpacity>
-            </Link>
           </View>
         </Animated.View>
 
@@ -253,7 +244,7 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Ionicons name="chatbubbles" size={22} color={PRIMARY_COLOR} />
             <Text style={styles.sectionTitle}>Prayer Wall</Text>
-            <Link href="/prayer-wall" style={styles.seeAll}>
+            <Link href="/create-prayer-request" style={styles.seeAll}>
               <Text style={styles.seeAllText}>View All</Text>
             </Link>
           </View>
@@ -264,7 +255,7 @@ export default function HomeScreen() {
             <Text style={styles.prayerText}>"Thank you for praying for my healing. I'm feeling much better!"</Text>
             <Text style={styles.prayerAuthor}>- Sister Maria</Text>
           </Animated.View>
-          <Link href="/prayer-wall" asChild>
+          <Link href="/create-prayer-request" asChild>
             <TouchableOpacity style={styles.prayerButton}>
               <Text style={styles.prayerButtonText}>Post Your Prayer</Text>
             </TouchableOpacity>

@@ -4,6 +4,8 @@ import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-g
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { supabase } from '@/lib/supabase';  // Make sure supabase client is set up correctly
 import DateTimePicker from '@react-native-community/datetimepicker';  // For Date Picker
+import { Ionicons } from '@expo/vector-icons';  // For back button icon
+import { router } from 'expo-router';
 
 // Regular expression for phone number validation (basic format)
 const phoneRegex = /^[0-9]{10}$/;  // Adjust the regex as needed
@@ -11,7 +13,7 @@ const phoneRegex = /^[0-9]{10}$/;  // Adjust the regex as needed
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
 
-export default function AddVisitorScreen() {
+export default function AddVisitorScreen({ navigation }) {  // Added navigation prop
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -102,10 +104,16 @@ export default function AddVisitorScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Animated.View entering={FadeIn.duration(500)}>
-        <Text style={styles.title}>Add New Visitor</Text>
-        <Text style={styles.subtitle}>Fill in the details to register a new visitor</Text>
-      </Animated.View>
+      {/* Header with Back Button */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.title}>Add New Visitor</Text>
+          <Text style={styles.subtitle}>Fill in the details to register a new visitor</Text>
+        </View>
+      </View>
 
       {/* Name Input */}
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.formGroup}>
@@ -180,6 +188,15 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 25,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 15,
+  },
   title: {
     fontSize: 24,
     fontFamily: 'Montserrat_600SemiBold',
@@ -190,7 +207,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_400Regular',
     color: '#6c757d',
-    marginBottom: 25,
+    marginBottom: 0,
   },
   formGroup: {
     marginBottom: 20,

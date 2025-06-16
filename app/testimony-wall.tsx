@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
@@ -20,7 +20,7 @@ export default function TestimonyWallScreen() {
       name: "Sarah Johnson",
       date: "2023-10-15",
       content: "After years of struggling with anxiety, I found peace through the church's counseling ministry. I'm now able to live a joyful life!",
-      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+      avatar: "https://avatar.iran.liara.run/public/boy",
       isFeatured: true
     },
     {
@@ -28,7 +28,7 @@ export default function TestimonyWallScreen() {
       name: "Michael Brown",
       date: "2023-10-10",
       content: "The financial breakthrough I experienced after joining the prosperity ministry has been incredible. My business has doubled in revenue!",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+      avatar: "https://avatar.iran.liara.run/public/girl",
       isFeatured: false
     },
     {
@@ -36,7 +36,7 @@ export default function TestimonyWallScreen() {
       name: "Grace Williams",
       date: "2023-10-05",
       content: "My marriage was restored after attending the marriage counseling sessions. We were on the verge of divorce but now we're stronger than ever.",
-      avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+      avatar: "https://avatar.iran.liara.run/public/boy",
       isFeatured: true
     },
     {
@@ -44,7 +44,7 @@ export default function TestimonyWallScreen() {
       name: "David Kim",
       date: "2023-09-28",
       content: "I was healed from chronic back pain during the prayer night. The doctors can't explain it but I know it was God's touch!",
-      avatar: "https://randomuser.me/api/portraits/men/22.jpg",
+      avatar: "https://avatar.iran.liara.run/public/girl",
       isFeatured: false
     },
   ]);
@@ -70,15 +70,18 @@ export default function TestimonyWallScreen() {
   return (
     <View style={styles.container}>
       <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
-        <View>
-          <Text style={styles.title}>Testimony Wall</Text>
-          <Text style={styles.subtitle}>Stories of God's faithfulness</Text>
-        </View>
-        <Link href="/admin/testimonies" asChild>
-          <TouchableOpacity style={styles.adminButton}>
-            <MaterialCommunityIcons name="shield-account" size={24} color="white" />
+        <View style={styles.headerLeft}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
           </TouchableOpacity>
-        </Link>
+          <View>
+            <Text style={styles.title}>Testimony Wall</Text>
+            <Text style={styles.subtitle}>Stories of God's faithfulness</Text>
+          </View>
+        </View>
       </Animated.View>
 
       <FlatList
@@ -155,6 +158,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+    marginTop: 10
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 15,
   },
   title: {
     fontSize: 24,

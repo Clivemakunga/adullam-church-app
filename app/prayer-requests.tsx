@@ -1,89 +1,183 @@
-import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image, ActivityIndicator, Alert } from 'react-native';
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { supabase } from '@/lib/supabase';
+import { useNavigation } from '@react-navigation/native';
+import { router } from 'expo-router';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
 
 export default function PrayerRequestsScreen() {
+  const navigation = useNavigation();
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
   });
 
-  const [prayers, setPrayers] = useState([
-    {
-      id: 1,
-      name: "Maria Garcia",
-      date: "2023-06-15",
-      request: "Please pray for my son who is going through depression and anxiety. He needs God's healing touch.",
-      status: "pending",
-      avatar: "https://randomuser.me/api/portraits/women/65.jpg",
-      category: "healing"
-    },
-    {
-      id: 2,
-      name: "James Wilson",
-      date: "2023-06-14",
-      request: "Pray for my job interview next week. I really need this position to support my family.",
-      status: "pending",
-      avatar: "https://randomuser.me/api/portraits/men/42.jpg",
-      category: "employment"
-    },
-    {
-      id: 3,
-      name: "Sarah Johnson",
-      date: "2023-06-12",
-      request: "My marriage is struggling. We need prayer for reconciliation and God's wisdom.",
-      status: "prayed",
-      avatar: "https://randomuser.me/api/portraits/women/33.jpg",
-      category: "marriage"
-    },
-  ]);
-
+  const [prayers, setPrayers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
 
-  const markAsPrayed = (id) => {
-    setPrayers(prayers.map(prayer => 
-      prayer.id === id ? {...prayer, status: "prayed"} : prayer
-    ));
-  };
+  const fetchPrivatePrayers = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch prayer requests
+      const { data: prayerRequests, error: prayerError } = await supabase
+        .from('prayer_requests')
+        .select('*')
+        .eq('is_private', true)
+        .order('created_at', { ascending: false });
 
-  const deleteRequest = (id) => {
-    setPrayers(prayers.filter(prayer => prayer.id !== id));
-  };
+      if (prayerError) throw prayerError;
 
-  const filteredPrayers = prayers.filter(prayer => 
-    activeTab === 'pending' ? prayer.status === 'pending' : prayer.status === 'prayed'
-  );
+      // Get all unique user IDs
+      const userIds = [...new Set(prayerRequests.map(p => p.user_id))];
 
-  const getCategoryIcon = (category) => {
-    switch(category) {
-      case 'healing':
-        return 'heart-pulse';
-      case 'employment':
-        return 'briefcase';
-      case 'marriage':
-        return 'heart';
-      case 'family':
-        return 'home';
-      case 'financial':
-        return 'cash';
-      default:
-        return 'pray';
+      // Fetch user data in one query
+      const { data: users, error: userError } = await supabase
+        .from('users')
+        .select('id, first_name, image')
+        .in('id', userIds);
+
+      if (userError) throw userError;
+
+      // Combine the data
+      const formattedPrayers = prayerRequests.map(prayer => {
+        const user = users.find(u => u.id === prayer.user_id);
+        return {
+          id: prayer.id,
+          name: user?.first_name || "Anonymous",
+          date: prayer.status ? prayer.updated_at || prayer.created_at : prayer.created_at,
+          request: prayer.content,
+          status: prayer.status || false,
+          avatar: user?.image,
+          category: "private"
+        };
+      });
+
+      setPrayers(formattedPrayers);
+    } catch (error) {
+      console.error('Error fetching private prayers:', error);
+      Alert.alert("Error", "Failed to load prayers. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    fetchPrivatePrayers();
+  }, []);
+
+  const markAsPrayed = async (id) => {
+    try {
+      setLoading(true);
+      
+      // First check if the prayer exists and isn't already prayed for
+      const { data: existingPrayer, error: fetchError } = await supabase
+        .from('prayer_requests')
+        .select('id, status')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!existingPrayer) throw new Error("Prayer request not found");
+      if (existingPrayer.status) {
+        // Already prayed for - just update local state
+        setPrayers(prayers.map(p => 
+          p.id === id ? {...p, status: true} : p
+        ));
+        return;
+      }
+
+      // Perform the update without expecting data back
+      const { error: updateError } = await supabase
+        .from('prayer_requests')
+        .update({ 
+          status: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Optimistic update
+      setPrayers(prayers.map(prayer => 
+        prayer.id === id ? { 
+          ...prayer, 
+          status: true,
+          date: new Date().toISOString() 
+        } : prayer
+      ));
+      
+      Alert.alert("Marked as Prayed");
+      setActiveTab('prayed');
+      
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRequest = async (id) => {
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('prayer_requests')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Update local state
+      setPrayers(prayers.filter(prayer => prayer.id !== id));
+    } catch (error) {
+      console.error('Error deleting prayer:', error);
+    }
+  };
+
+  // Filter prayers based on status boolean
+  const filteredPrayers = prayers.filter(prayer => 
+    activeTab === 'pending' ? !prayer.status : prayer.status
+  );
+
+  const getCategoryIcon = () => {
+    return 'lock'; // Using lock icon for all private prayers
+  };
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <Text style={styles.loadingText}>Loading private prayers...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Animated.View entering={FadeIn.duration(500)}>
-        <Text style={styles.title}>Prayer Requests</Text>
-        <Text style={styles.subtitle}>Lift up your congregation in prayer</Text>
-      </Animated.View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>Private Prayer Requests</Text>
+          <Text style={styles.subtitle}>Confidential prayer needs</Text>
+        </View>
+      </View>
 
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.tabs}>
         <TouchableOpacity 
@@ -91,7 +185,7 @@ export default function PrayerRequestsScreen() {
           onPress={() => setActiveTab('pending')}
         >
           <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-            Pending ({prayers.filter(p => p.status === 'pending').length})
+            Pending ({prayers.filter(p => !p.status).length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -99,7 +193,7 @@ export default function PrayerRequestsScreen() {
           onPress={() => setActiveTab('prayed')}
         >
           <Text style={[styles.tabText, activeTab === 'prayed' && styles.tabTextActive]}>
-            Prayed For
+            Prayed For ({prayers.filter(p => p.status).length})
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -109,11 +203,11 @@ export default function PrayerRequestsScreen() {
           entering={FadeInDown.duration(500).delay(200)}
           style={styles.emptyState}
         >
-          <MaterialCommunityIcons name="pray" size={48} color="#adb5bd" />
+          <MaterialCommunityIcons name="lock" size={48} color="#adb5bd" />
           <Text style={styles.emptyText}>
             {activeTab === 'pending' 
-              ? 'No pending prayer requests' 
-              : 'No prayers marked as prayed for yet'}
+              ? 'No pending private prayer requests' 
+              : 'No private prayers marked as prayed for yet'}
           </Text>
         </Animated.View>
       ) : (
@@ -127,13 +221,19 @@ export default function PrayerRequestsScreen() {
               style={styles.prayerCard}
             >
               <View style={styles.prayerHeader}>
-                <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                {item.avatar ? (
+                  <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.anonymousAvatar}>
+                    <MaterialCommunityIcons name="account" size={24} color="white" />
+                  </View>
+                )}
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>{item.name}</Text>
-                  <Text style={styles.date}>{item.date}</Text>
+                  <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
                 </View>
                 <MaterialCommunityIcons 
-                  name={getCategoryIcon(item.category)} 
+                  name={getCategoryIcon()} 
                   size={20} 
                   color={PRIMARY_COLOR} 
                 />
@@ -164,7 +264,7 @@ export default function PrayerRequestsScreen() {
               {activeTab === 'prayed' && (
                 <View style={styles.prayedTag}>
                   <MaterialCommunityIcons name="check" size={16} color="white" />
-                  <Text style={styles.prayedTagText}>Prayed on {item.date}</Text>
+                  <Text style={styles.prayedTagText}>Prayed on {new Date(item.date).toLocaleDateString()}</Text>
                 </View>
               )}
             </Animated.View>
@@ -179,6 +279,18 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -308,5 +420,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#adb5bd',
     marginTop: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontFamily: 'Montserrat_400Regular',
+    color: ADMIN_COLOR,
+  },
+  anonymousAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: '#6c757d',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

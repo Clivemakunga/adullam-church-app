@@ -4,6 +4,7 @@ import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-g
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 
 const PRIMARY_COLOR = '#c31c6b';
 const ADMIN_COLOR = '#2f4858';
@@ -48,7 +49,12 @@ export default function CreateTestimonyScreen() {
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
-      Alert.alert('Success', 'Testimony created successfully!');
+      Alert.alert('Success', 'Testimony created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
       // Reset form
       setTestimonyData({
         title: '',
@@ -65,10 +71,18 @@ export default function CreateTestimonyScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Animated.View entering={FadeIn.duration(500)}>
-        <Text style={styles.title}>Create Testimony</Text>
-        <Text style={styles.subtitle}>Share powerful stories of God's work</Text>
-      </Animated.View>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+        </TouchableOpacity>
+        <Animated.View entering={FadeIn.duration(500)} style={styles.headerContent}>
+          <Text style={styles.title}>Create Testimony</Text>
+          <Text style={styles.subtitle}>Share powerful stories of God's work</Text>
+        </Animated.View>
+      </View>
 
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.formGroup}>
         <Text style={styles.label}>Title *</Text>
@@ -165,8 +179,22 @@ export default function CreateTestimonyScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 20,
     paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    marginTop: 30,
+  },
+  backButton: {
+    marginRight: 15,
+    padding: 5,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -178,7 +206,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_400Regular',
     color: '#6c757d',
-    marginBottom: 25,
   },
   formGroup: {
     marginBottom: 20,
@@ -269,6 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     marginTop: 10,
+    marginBottom: 100
   },
   submitButtonDisabled: {
     backgroundColor: '#adb5bd',

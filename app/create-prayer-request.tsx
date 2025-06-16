@@ -1,21 +1,59 @@
-// app/prayers/create.js
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useState } from 'react';
 import { Link, router } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CreatePrayerScreen() {
   const [request, setRequest] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    // In a real app, you would submit to your backend here
-    Alert.alert("Success", "Prayer request submitted for approval");
-    router.back();
+  const handleSubmit = async () => {
+    if (!request.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to submit a prayer request');
+      }
+      
+      const { error } = await supabase
+        .from('prayer_requests')
+        .insert({
+          content: request.trim(),
+          is_private: isPrivate,
+          user_id: user.id,
+          prayer_count: 0, // Initialize prayer count
+          created_at: new Date().toISOString()
+        });
+        
+      if (error) throw error;
+      
+      Alert.alert("Success", "Prayer request submitted successfully");
+      router.back();
+    } catch (error) {
+      Alert.alert("Error", error.message || "Failed to submit prayer request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>New Prayer Request</Text>
+      {/* Header with Back Button */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#2f4858" />
+        </TouchableOpacity>
+        <Text style={styles.title}>New Prayer Request</Text>
+      </View>
       
       <TextInput
         style={styles.input}
@@ -39,11 +77,13 @@ export default function CreatePrayerScreen() {
       </TouchableOpacity>
       
       <TouchableOpacity 
-        style={styles.submitButton}
+        style={[styles.submitButton, (!request.trim() || isSubmitting) && styles.disabledButton]}
         onPress={handleSubmit}
-        disabled={!request.trim()}
+        disabled={!request.trim() || isSubmitting}
       >
-        <Text style={styles.submitText}>Submit for Approval</Text>
+        <Text style={styles.submitText}>
+          {isSubmitting ? "Submitting..." : "Submit for Approval"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -55,10 +95,18 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f8f9fa',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 15,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
     color: '#2f4858',
   },
   input: {
@@ -102,6 +150,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
   submitText: {
     color: 'white',

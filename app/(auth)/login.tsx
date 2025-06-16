@@ -5,14 +5,14 @@ import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-g
 import Animated, { FadeIn, FadeInDown, FadeInUp, BounceIn } from "react-native-reanimated";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from '../../providers/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
-  const { login, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     setError(''); // Clear previous errors
@@ -21,12 +21,22 @@ export default function LoginScreen() {
       return;
     }
 
+    setLoading(true);
+
     try {
-      await login(email, password);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim(),
+      });
+
+      if (error) throw error;
+
       router.replace("/(tabs)");
     } catch (error: any) {
       setError(error.message);
       Alert.alert("Login Error", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 

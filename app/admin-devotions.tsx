@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Refresh
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, router, useRouter } from "expo-router";
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 
@@ -17,7 +17,7 @@ const devotionCategories = [
   { id: 'special', name: 'Special Message' },
 ];
 
-export default function DevotionsScreen() {
+export default function AdminDevotionsScreen() {
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -27,6 +27,8 @@ export default function DevotionsScreen() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     fetchDevotions();
@@ -107,7 +109,10 @@ export default function DevotionsScreen() {
     >
       <Animated.View entering={FadeIn.duration(500)}>
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
             <Text style={styles.title}>Devotions</Text>
             <Text style={styles.subtitle}>Spiritual nourishment for your congregation</Text>
           </View>
@@ -180,14 +185,15 @@ export default function DevotionsScreen() {
                 )}
               </View>
               
-              {/* <View style={styles.devotionFooter}>
+              <View style={styles.devotionFooter}>
                 <View style={styles.actions}>
-                  <Link href={`/admin/devotions/edit/${item.id}`} asChild>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <MaterialCommunityIcons name="pencil" size={18} color={PRIMARY_COLOR} />
-                      <Text style={[styles.actionText, { color: PRIMARY_COLOR }]}>Edit</Text>
-                    </TouchableOpacity>
-                  </Link>
+                  <TouchableOpacity 
+                    style={styles.actionButton} 
+                    onPress={() => router.push({ pathname: '/create-devotion/[id]', params: { id: item.id } })}
+                  >
+                    <MaterialCommunityIcons name="pencil" size={18} color={PRIMARY_COLOR} />
+                    <Text style={[styles.actionText, { color: PRIMARY_COLOR }]}>Edit</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.actionButton}
                     onPress={() => deleteDevotion(item.id)}
@@ -196,7 +202,7 @@ export default function DevotionsScreen() {
                     <Text style={[styles.actionText, { color: '#dc3545' }]}>Delete</Text>
                   </TouchableOpacity>
                 </View>
-              </View> */}
+              </View>
             </Animated.View>
           )}
         />
@@ -212,9 +218,15 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
