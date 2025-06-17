@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, Image, RefreshControl, TouchableOpaci
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { supabase } from '@/lib/supabase';
 
 const PRIMARY_COLOR = '#c31c6b';
@@ -120,54 +120,54 @@ export default function PrayerWallScreen() {
     setRefreshing(false);
   };
 
-const handlePray = async (prayerId) => {
-  if (!userId) {
-    Alert.alert('Please sign in', 'You need to be signed in to pray for requests');
-    return;
-  }
-
-  try {
-    // Check if already prayed
-    const { data: existingPrayer, error: checkError } = await supabase
-      .from('prayers')
-      .select('*')
-      .eq('request_id', prayerId)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (existingPrayer) {
-      Alert.alert("You've already prayed for this request");
+  const handlePray = async (prayerId) => {
+    if (!userId) {
+      Alert.alert('Please sign in', 'You need to be signed in to pray for requests');
       return;
     }
 
-    // Increment prayer count using the PostgreSQL function
-    const { error: incrementError } = await supabase
-      .rpc('increment_prayer_count', { prayer_id: prayerId });
+    try {
+      // Check if already prayed
+      const { data: existingPrayer, error: checkError } = await supabase
+        .from('prayers')
+        .select('*')
+        .eq('request_id', prayerId)
+        .eq('user_id', userId)
+        .maybeSingle();
 
-    if (incrementError) throw incrementError;
+      if (existingPrayer) {
+        Alert.alert("You've already prayed for this request");
+        return;
+      }
 
-    // Record the prayer
-    const { error: insertError } = await supabase
-      .from('prayers')
-      .insert({
-        request_id: prayerId,
-        user_id: userId
-      });
+      // Increment prayer count using the PostgreSQL function
+      const { error: incrementError } = await supabase
+        .rpc('increment_prayer_count', { prayer_id: prayerId });
 
-    if (insertError) throw insertError;
+      if (incrementError) throw incrementError;
 
-    // Update local state
-    setPrayers(prayers.map(prayer => 
-      prayer.id === prayerId 
-        ? { ...prayer, prayedCount: (prayer.prayedCount || 0) + 1, hasPrayed: true } 
-        : prayer
-    ));
+      // Record the prayer
+      const { error: insertError } = await supabase
+        .from('prayers')
+        .insert({
+          request_id: prayerId,
+          user_id: userId
+        });
 
-  } catch (error) {
-    console.error('Error recording prayer:', error);
-    Alert.alert('Error', 'Failed to record your prayer');
-  }
-};
+      if (insertError) throw insertError;
+
+      // Update local state
+      setPrayers(prayers.map(prayer => 
+        prayer.id === prayerId 
+          ? { ...prayer, prayedCount: (prayer.prayedCount || 0) + 1, hasPrayed: true } 
+          : prayer
+      ));
+
+    } catch (error) {
+      console.error('Error recording prayer:', error);
+      Alert.alert('Error', 'Failed to record your prayer');
+    }
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -205,9 +205,14 @@ const handlePray = async (prayerId) => {
   return (
     <View style={styles.container}>
       <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
-        <View>
-          <Text style={styles.title}>Prayer Wall</Text>
-          <Text style={styles.subtitle}>Join us in praying for these needs</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>Prayer Wall</Text>
+            {/* <Text style={styles.subtitle}>Join us in praying for these needs</Text> */}
+          </View>
         </View>
         <Link href="/create-prayer-request" asChild>
           <TouchableOpacity style={styles.createButton}>
@@ -308,6 +313,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+    marginTop: 30
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
     fontSize: 24,
@@ -327,10 +341,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     gap: 6,
+    marginRight: 10
   },
   createButtonText: {
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 14,
+    fontSize: 10,
     color: 'white',
   },
   listContent: {

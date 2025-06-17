@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Refresh
 import { useFonts, Montserrat_600SemiBold, Montserrat_400Regular } from "@expo-google-fonts/montserrat";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 
@@ -18,6 +18,7 @@ const devotionCategories = [
 ];
 
 export default function DevotionsScreen() {
+  const router = useRouter();
   const [fontsLoaded] = useFonts({
     Montserrat_600SemiBold,
     Montserrat_400Regular,
@@ -71,7 +72,6 @@ export default function DevotionsScreen() {
         return;
       }
 
-      // Remove the deleted devotion from state
       setDevotions(devotions.filter(devotion => devotion.id !== id));
     } catch (error) {
       console.error('Error:', error);
@@ -107,7 +107,10 @@ export default function DevotionsScreen() {
     >
       <Animated.View entering={FadeIn.duration(500)}>
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={ADMIN_COLOR} />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
             <Text style={styles.title}>Devotions</Text>
             <Text style={styles.subtitle}>Spiritual nourishment for your congregation</Text>
           </View>
@@ -179,24 +182,6 @@ export default function DevotionsScreen() {
                   </View>
                 )}
               </View>
-              
-              {/* <View style={styles.devotionFooter}>
-                <View style={styles.actions}>
-                  <Link href={`/admin/devotions/edit/${item.id}`} asChild>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <MaterialCommunityIcons name="pencil" size={18} color={PRIMARY_COLOR} />
-                      <Text style={[styles.actionText, { color: PRIMARY_COLOR }]}>Edit</Text>
-                    </TouchableOpacity>
-                  </Link>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => deleteDevotion(item.id)}
-                  >
-                    <MaterialCommunityIcons name="trash-can" size={18} color="#dc3545" />
-                    <Text style={[styles.actionText, { color: '#dc3545' }]}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View> */}
             </Animated.View>
           )}
         />
@@ -212,9 +197,15 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    marginTop: 30
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -225,25 +216,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_400Regular',
     color: '#6c757d',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addButtonText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 14,
-    color: 'white',
   },
   categoryContainer: {
     marginBottom: 20,
@@ -328,27 +300,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 12,
     color: 'white',
-  },
-  devotionFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  actionText: {
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 14,
   },
   loadingState: {
     alignItems: 'center',
